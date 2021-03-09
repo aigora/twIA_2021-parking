@@ -1,10 +1,10 @@
 # [Título del trabajo]
 
-[Descripción breve del proyecto a realizar (2-3 frases).]
+El proyecto trata de crear un parking público que identifique a los vehículos que entran, calcule el tiempo que permanecen en el interior y cuente las plazas que tiene libres
 
 ## Integrantes del equipo
 
-[Nombres, apellidos, y usuario GitHub de los integrantes del equipo.]
+Laura Lucía Hernández @LauraHCampos
 
 ## Objetivos del trabajo
 
