@@ -4,8 +4,8 @@
 #define Vel_Son 34000.0
 #define LED_rojo 13
 #define LED_verde 12
-#define boton_entrada 8// lo mismo que el de abajo
-#define boton_salida 9//lo pones tu q no consigo usar mi placa
+#define boton_entrada 8
+#define boton_salida 9
 Servo servomotor;
 float distancia, tiempo;
 int Be, Bs;
