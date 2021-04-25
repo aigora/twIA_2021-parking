@@ -4,9 +4,11 @@
 #define Vel_Son 34000.0
 #define LED_rojo 13
 #define LED_verde 12
-
+#define boton_entrada 8
+#define boton_salida 9
 Servo servomotor;
 float distancia, tiempo;
+int Be, Bs;
 
 void setup() {
   
@@ -14,7 +16,8 @@ void setup() {
 
   servomotor.attach(11);
   servomotor.write(0);
-
+  pinMode(boton_entrada, INPUT);
+  pinMode(boton_salida, INPUT); 
   pinMode (Echo, INPUT);
   pinMode (Trig, OUTPUT);
   pinMode (LED_rojo, OUTPUT);
@@ -25,31 +28,67 @@ void setup() {
 void loop() {
 
   inicio();
+  Be = digitalRead(boton_entrada);
+  Bs = digitalRead(boton_salida);
+  
   tiempo = pulseIn(Echo, HIGH);
   distancia = tiempo * 0.000001 * Vel_Son / 2.0;
   Serial.print(distancia);
   Serial.print(" cm\n");
   delay(500);
+  
+  if (Be==HIGH){
+    delay(100);
+    
+    if(Be==HIGH){
 
-  if (distancia < 5){
-    
-    servomotor.write(90);
-    digitalWrite(LED_rojo, LOW);
-    digitalWrite(LED_verde, HIGH);
-    
-    delay (500);
-    
+      do{
+        servomotor.write(90);
+        digitalWrite(LED_rojo, LOW);
+        digitalWrite(LED_verde, HIGH);
+        inicio();
+        tiempo = pulseIn(Echo, HIGH);
+        distancia = tiempo * 0.000001 * Vel_Son / 2.0;
+        Serial.print(distancia);
+        Serial.print(" cm\n");
+        delay(500);
+        }while(distancia <= 10);
+
+      servomotor.write(0);
+      digitalWrite(LED_rojo, HIGH);
+      digitalWrite(LED_verde, LOW);
+      delay(500);
+    }
   }
-
-  else {
-
-    servomotor.write(0);
-    digitalWrite(LED_rojo, HIGH);
-    digitalWrite(LED_verde, LOW);
+  
+  if (Bs==HIGH){
+    delay(100);
     
-    delay(500);
-  }
-
+    if(Bs==HIGH){
+      do{
+        servomotor.write(90);
+        digitalWrite(LED_rojo, LOW);
+        digitalWrite(LED_verde, HIGH);
+        inicio();
+        tiempo = pulseIn(Echo, HIGH);
+        distancia = tiempo * 0.000001 * Vel_Son / 2.0;
+        Serial.print(distancia);
+        Serial.print(" cm\n");
+        delay(500);
+        }while(distancia <= 10);
+        
+      servomotor.write(0);
+      digitalWrite(LED_rojo, HIGH);
+      digitalWrite(LED_verde, LOW);
+      delay(500);}
+      }
+      
+      if(distancia > 10){
+        servomotor.write(0);
+        digitalWrite(LED_rojo, HIGH);
+        digitalWrite(LED_verde, LOW);
+        delay(500);
+        }
 }
 
 void inicio(){
