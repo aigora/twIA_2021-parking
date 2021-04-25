@@ -33,6 +33,9 @@ void loop() {
   Be = digitalRead(boton_entrada);
   Bs = digitalRead(boton_salida);
   
+  digitalWrite(LED_rojo, HIGH);
+  digitalWrite(LED_verde, LOW);
+  
   tiempo = pulseIn(Echo, HIGH);
   distancia = tiempo * 0.000001 * Vel_Son / 2.0;
   Serial.print(distancia);
