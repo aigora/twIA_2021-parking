@@ -6,9 +6,11 @@
 #define LED_verde 12
 #define boton_entrada 8
 #define boton_salida 9
+#define aforo 20
+
 Servo servomotor;
 float distancia, tiempo;
-int Be, Bs;
+int Be, Bs, coches = 0;
 
 void setup() {
   
@@ -35,13 +37,20 @@ void loop() {
   distancia = tiempo * 0.000001 * Vel_Son / 2.0;
   Serial.print(distancia);
   Serial.print(" cm\n");
+  Serial.print(coches);
+  Serial.print(" coches\n");
   delay(500);
   
   if (Be==HIGH){
     delay(100);
     
     if(Be==HIGH){
-
+    
+    if(coches == aforo){
+      Serial.print("Aforo completo, por favor dé la vuelta\n");
+      }
+      
+    else if(coches<=aforo){
       do{
         servomotor.write(90);
         digitalWrite(LED_rojo, LOW);
@@ -54,13 +63,15 @@ void loop() {
         delay(500);
         }while(distancia <= 10);
 
+      coches++;
+
       servomotor.write(0);
       digitalWrite(LED_rojo, HIGH);
       digitalWrite(LED_verde, LOW);
       delay(500);
     }
   }
-  
+ }
   if (Bs==HIGH){
     delay(100);
     
@@ -76,6 +87,8 @@ void loop() {
         Serial.print(" cm\n");
         delay(500);
         }while(distancia <= 10);
+
+      coches--;  
         
       servomotor.write(0);
       digitalWrite(LED_rojo, HIGH);
