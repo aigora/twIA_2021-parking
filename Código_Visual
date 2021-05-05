@@ -1,0 +1,129 @@
+#include<stdio.h>
+#include<string.h>
+#include<Windows.h>
+#define aforo 15
+#define TARIFA 5
+
+typedef struct{
+
+	float hora_entrada, hora_salida;
+	char matricula[8];
+}COCHE;
+
+void registro(char matricula[], float hora_entrada, int coches);
+void entrada(int coches, COCHE*);
+void salida(int coches, COCHE*);
+float tarifa(float hora_entrada, float hora_salida);
+
+int main() {
+
+	COCHE plazas[aforo];
+
+
+	int  coches = 0, i;
+	float precio, importe_introducido;
+	char opc;
+
+	do {
+
+		printf("\t\t\tBIENVENIDO, PRESIONE EL BOTON PARA CONTINUAR\n");
+
+		printf("Introducir 'e' si entra y 's' si sale: ");//Se sustituira por la lectura del estado de los botones
+		scanf_s(" %c", &opc);
+
+		switch (opc) {
+
+		case 'e':
+			entrada(coches, &plazas[aforo]);
+			coches++;
+			break;
+		
+		case 's':
+			salida(coches, &plazas[aforo]);
+			coches--;
+			break;
+
+		default:
+			printf("Opcion incorrecta\n\n");
+
+	}	
+	
+	} while (coches < aforo);
+
+	printf("\t\t\tAFORO COMPLETO, POR FAVOR DE LA VUELTA\n\n\n");	
+}
+
+void entrada(int coches, COCHE* plazas) {
+
+	printf("Introduzca su matricula: ");
+	getchar();
+	gets_s(plazas[coches].matricula);
+
+	printf("Introduzca la hora de entrada: ");
+	scanf_s(" %f", &plazas[coches].hora_entrada);
+
+	registro(plazas[coches].matricula, plazas[coches].hora_entrada, coches);
+
+	printf("\t\tOk, puede entrar\n\n");
+}
+
+void registro(char matricula_e[], float hora_entrada, int coches) { //HAY QUE REVISARLO
+
+	FILE* pf;
+	fopen_s( &pf, "registro.txt", "w");
+
+	fwrite(matricula_e, sizeof(matricula_e), 1, pf);
+	fwrite(&hora_entrada, sizeof(hora_entrada), 1, pf);
+}
+
+void salida(int coches, COCHE* plazas) {
+
+	int i;
+	float importe_introducido = 0, importe_introducido2 = 0, precio;
+	char matricula_sal[8];
+
+	printf("Introduzca su matricula: ");
+	getchar();
+	gets_s(matricula_sal);
+
+	for (i = 0; i < coches; i++) {  //comprobar si la matricula coincide con alguna del registro
+
+		if (matricula_sal[7] == plazas[i].matricula[7]) {  //si coincide:
+
+			printf("Introduzca la hora actual: ");
+			scanf_s("%f", &plazas[i].hora_salida);
+
+			precio = tarifa(plazas[i].hora_entrada, plazas[i].hora_salida);
+			printf("El importe asciende a %.2f EUROS, introduzcalos por favor: ", precio);
+			scanf_s("%f", &importe_introducido);
+
+			do {
+				
+				printf("Le falta introducir %.2f EUROS, introduzcalos por favor: ", (precio - importe_introducido));
+				scanf_s("%f", &importe_introducido2);
+				importe_introducido += importe_introducido2;
+			
+			} while (importe_introducido < precio);
+
+			if (importe_introducido > precio) {
+				printf("Se le han devuelto %.2f EUROS, recojalos por favor ", (importe_introducido - precio));
+			}
+
+			printf("Buen viaje\n");
+			coches--;
+		}
+
+		else
+			printf("Matricula no encontrada\n\n");
+	}
+}
+
+float tarifa(float hora_entrada, float hora_salida) {
+
+	float precio, tiempo;
+
+	tiempo = hora_salida - hora_entrada;
+	precio = tiempo * TARIFA;
+
+	return precio;
+}
