@@ -3,11 +3,12 @@
 #include<Windows.h>
 #define aforo 15
 #define TARIFA 5
+#define DIM 8
 
 typedef struct{
 
 	float hora_entrada, hora_salida;
-	char matricula[8];
+	char matricula[DIM];
 }COCHE;
 
 void registro(char matricula[], float hora_entrada, int coches);
@@ -49,7 +50,8 @@ int main() {
 	}	
 	
 	} while (coches < aforo);
-
+	
+	system("cls");
 	printf("\t\t\tAFORO COMPLETO, POR FAVOR DE LA VUELTA\n\n\n");	
 }
 
@@ -80,7 +82,7 @@ void salida(int coches, COCHE* plazas) {
 
 	int i;
 	float importe_introducido = 0, importe_introducido2 = 0, precio;
-	char matricula_sal[8];
+	char matricula_sal[DIM];
 
 	printf("Introduzca su matricula: ");
 	getchar();
@@ -88,7 +90,7 @@ void salida(int coches, COCHE* plazas) {
 
 	for (i = 0; i < coches; i++) {  //comprobar si la matricula coincide con alguna del registro
 
-		if (matricula_sal[7] == plazas[i].matricula[7]) {  //si coincide:
+		if (matricula_sal[DIM - 1] == plazas[i].matricula[DIM - 1]) {  //si coincide:
 
 			printf("Introduzca la hora actual: ");
 			scanf_s("%f", &plazas[i].hora_salida);
