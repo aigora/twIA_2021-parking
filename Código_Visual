@@ -35,23 +35,23 @@ int main() {
 		switch (opc) {
 
 		case 'e':
-			entrada(coches, &plazas[aforo]);
+			entrada(coches, &plazas[coches]);
 			coches++;
 			break;
 		
 		case 's':
-			salida(coches, &plazas[aforo]);
+			salida(coches, &plazas[coches]);
 			coches--;
 			break;
 
 		default:
 			printf("Opcion incorrecta\n\n");
-
-	}	
+		}	
 	
 	} while (coches < aforo);
-	
+
 	system("cls");
+
 	printf("\t\t\tAFORO COMPLETO, POR FAVOR DE LA VUELTA\n\n\n");	
 }
 
@@ -62,25 +62,42 @@ void entrada(int coches, COCHE* plazas) {
 	gets_s(plazas[coches].matricula);
 
 	printf("Introduzca la hora de entrada: ");
-	scanf_s(" %f", &plazas[coches].hora_entrada);
+	scanf_s("%f", &plazas[coches].hora_entrada);
 
 	registro(plazas[coches].matricula, plazas[coches].hora_entrada, coches);
 
-	printf("\t\tOk, puede entrar\n\n");
+	printf("\n\nOk, puede entrar\n\n");
+
+
 }
 
 void registro(char matricula_e[], float hora_entrada, int coches) { //HAY QUE REVISARLO
 
 	FILE* pf;
-	fopen_s( &pf, "registro.txt", "w");
 
-	fwrite(matricula_e, sizeof(matricula_e), 1, pf);
-	fwrite(&hora_entrada, sizeof(hora_entrada), 1, pf);
+	errno_t err; // Open for read (will fail if file "registro.txt" doesn't exist)
+
+	err = fopen_s(&pf, "registro.txt", "a+");
+
+	if (err == 0) {
+
+		printf("El archivo registro.txt esta abierto\n");
+
+		fprintf_s(pf, "%s %.2f\n", matricula_e, hora_entrada);
+	}
+
+	else
+		printf("El archivo registro.txt NO está abierto\n");
+
+	if (fclose(pf) == NULL)
+		printf("\n Archivo cerrado correctamente");
+	else
+		printf("\n Error en el cierre del archivo");
 }
 
 void salida(int coches, COCHE* plazas) {
 
-	int i;
+	int i = 0;
 	float importe_introducido = 0, importe_introducido2 = 0, precio;
 	char matricula_sal[DIM];
 
@@ -88,7 +105,7 @@ void salida(int coches, COCHE* plazas) {
 	getchar();
 	gets_s(matricula_sal);
 
-	for (i = 0; i < coches; i++) {  //comprobar si la matricula coincide con alguna del registro
+	do {  //comprobar si la matricula coincide con alguna del registro
 
 		if (matricula_sal[DIM - 1] == plazas[i].matricula[DIM - 1]) {  //si coincide:
 
@@ -99,25 +116,27 @@ void salida(int coches, COCHE* plazas) {
 			printf("El importe asciende a %.2f EUROS, introduzcalos por favor: ", precio);
 			scanf_s("%f", &importe_introducido);
 
-			do {
+			if (importe_introducido < precio) {
 				
 				printf("Le falta introducir %.2f EUROS, introduzcalos por favor: ", (precio - importe_introducido));
 				scanf_s("%f", &importe_introducido2);
 				importe_introducido += importe_introducido2;
-			
-			} while (importe_introducido < precio);
+			}
 
 			if (importe_introducido > precio) {
 				printf("Se le han devuelto %.2f EUROS, recojalos por favor ", (importe_introducido - precio));
 			}
 
-			printf("Buen viaje\n");
+			printf("\nBuen viaje\n");
 			coches--;
 		}
 
-		else
-			printf("Matricula no encontrada\n\n");
-	}
+		i++;
+
+	} while (matricula_sal[DIM] != plazas[i].matricula[DIM] && i < coches);
+
+	if (i = coches)
+		printf("Matricula no encontrada");
 }
 
 float tarifa(float hora_entrada, float hora_salida) {
