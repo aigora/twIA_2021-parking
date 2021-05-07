@@ -11,6 +11,7 @@
 Servo servomotor;
 float distancia, tiempo;
 int Be, Bs, coches = 0;
+char opc;
 
 void setup() {
   
@@ -30,9 +31,11 @@ void setup() {
 void loop() {
 
   inicio();
+
+  
   Be = digitalRead(boton_entrada);
   Bs = digitalRead(boton_salida);
-  
+
   digitalWrite(LED_rojo, HIGH);
   digitalWrite(LED_verde, LOW);
   
@@ -48,30 +51,41 @@ void loop() {
     delay(100);
     
     if(Be==HIGH){
+
+      if(coches == aforo){
+    Serial.print("Aforo completo, por favor dé la vuelta\n");
+  }
+  else if(coches<=aforo){
+
     
-    if(coches == aforo){
-      Serial.print("Aforo completo, por favor dé la vuelta\n");
-      }
-      
-    else if(coches<=aforo){
-      do{
-        servomotor.write(90);
-        digitalWrite(LED_rojo, LOW);
-        digitalWrite(LED_verde, HIGH);
-        inicio();
-        tiempo = pulseIn(Echo, HIGH);
-        distancia = tiempo * 0.000001 * Vel_Son / 2.0;
-        Serial.print(distancia);
-        Serial.print(" cm\n");
-        delay(500);
+      String str = ("e");
+      Serial.println(str);
+
+      opc = procesar_mensaje();  
+
+      if (opc == 'e'){
+        
+        do{
+          servomotor.write(90);
+          digitalWrite(LED_rojo, LOW);
+          digitalWrite(LED_verde, HIGH);
+          inicio();
+          tiempo = pulseIn(Echo, HIGH);
+          distancia = tiempo * 0.000001 * Vel_Son / 2.0;
+          Serial.print(distancia);
+          Serial.print(" cm\n");
+          delay(500);
         }while(distancia <= 10);
 
       coches++;
 
+      String str = ("El coche ha entrado");
+      Serial.println(str);
+
       servomotor.write(0);
       digitalWrite(LED_rojo, HIGH);
       digitalWrite(LED_verde, LOW);
-      delay(500);
+      delay(500);}
     }
   }
  }
@@ -79,19 +93,29 @@ void loop() {
     delay(100);
     
     if(Bs==HIGH){
-      do{
-        servomotor.write(90);
-        digitalWrite(LED_rojo, LOW);
-        digitalWrite(LED_verde, HIGH);
-        inicio();
-        tiempo = pulseIn(Echo, HIGH);
-        distancia = tiempo * 0.000001 * Vel_Son / 2.0;
-        Serial.print(distancia);
-        Serial.print(" cm\n");
-        delay(500);
+
+      String str = ("s");
+      Serial.println(str);
+
+      opc = procesar_mensaje();
+
+      if (opc == 'e'){
+
+        do{
+          servomotor.write(90);
+          digitalWrite(LED_rojo, LOW);
+          digitalWrite(LED_verde, HIGH);
+          inicio();
+          tiempo = pulseIn(Echo, HIGH);
+          distancia = tiempo * 0.000001 * Vel_Son / 2.0;
+          Serial.print(distancia);
+          Serial.print(" cm\n");
+          delay(500);
         }while(distancia <= 10);
 
       coches--;  
+      String str = ("El coche ha salido");
+      Serial.println(str);
         
       servomotor.write(0);
       digitalWrite(LED_rojo, HIGH);
@@ -104,7 +128,8 @@ void loop() {
         digitalWrite(LED_rojo, HIGH);
         digitalWrite(LED_verde, LOW);
         delay(500);
-        }
+      }
+   }
 }
 
 void inicio(){
@@ -114,4 +139,18 @@ void inicio(){
   digitalWrite(Trig, HIGH);
   delayMicroseconds(10);
   digitalWrite(Trig, LOW);
+}
+
+char procesar_mensaje(){
+  String cadena = Serial.readStringUntil('\n'); // Lee mensaje
+  
+  if (cadena.equals("Registro completado")){ // Entre las comillas se pone el texto del mensaje que se espera  
+
+      return 'e';
+        // Acciones asociadas a ese mensaje
+    }
+  else if (cadena.equals("Pago realizado")){ // Y así sucesivamente con todos los posibles mensajes
+      
+      return 's';
+    }
 }
