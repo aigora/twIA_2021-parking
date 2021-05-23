@@ -6,12 +6,10 @@
 #define LED_verde 12
 #define boton_entrada 8
 #define boton_salida 9
-#define aforo 20
 
 Servo servomotor;
 float distancia, tiempo;
-int Be, Bs, coches = 0;
-char opc;
+int Be, Bs, coches = 0, aforo;
 
 void setup() {
   
@@ -32,6 +30,8 @@ void loop() {
 
   inicio();
 
+  if (Serial.available() > 0)  // Si hay mensajes procedentes del PC  
+        aforo = procesar_aforo();
   
   Be = digitalRead(boton_entrada);
   Bs = digitalRead(boton_salida);
@@ -41,10 +41,6 @@ void loop() {
   
   tiempo = pulseIn(Echo, HIGH);
   distancia = tiempo * 0.000001 * Vel_Son / 2.0;
-  Serial.print(distancia);
-  Serial.print(" cm\n");
-  Serial.print(coches);
-  Serial.print(" coches\n");
   delay(500);
   
   if (Be==HIGH){
@@ -53,86 +49,98 @@ void loop() {
     if(Be==HIGH){
 
       if(coches == aforo){
-    Serial.print("Aforo completo, por favor dé la vuelta\n");
-  }
-  else if(coches<=aforo){
-
-    
-      String str = ("e");
-      Serial.println(str);
-
-      opc = procesar_mensaje();  
-
-      if (opc == 'e'){
-        
-        do{
-          servomotor.write(90);
-          digitalWrite(LED_rojo, LOW);
-          digitalWrite(LED_verde, HIGH);
-          inicio();
-          tiempo = pulseIn(Echo, HIGH);
-          distancia = tiempo * 0.000001 * Vel_Son / 2.0;
-          Serial.print(distancia);
-          Serial.print(" cm\n");
-          delay(500);
-        }while(distancia <= 10);
-
-      coches++;
-
-      String str = ("El coche ha entrado");
-      Serial.println(str);
-
-      servomotor.write(0);
-      digitalWrite(LED_rojo, HIGH);
-      digitalWrite(LED_verde, LOW);
-      delay(500);}
-    }
-  }
- }
-  if (Bs==HIGH){
-    delay(100);
-    
-    if(Bs==HIGH){
-
-      String str = ("s");
-      Serial.println(str);
-
-      opc = procesar_mensaje();
-
-      if (opc == 'e'){
-
-        do{
-          servomotor.write(90);
-          digitalWrite(LED_rojo, LOW);
-          digitalWrite(LED_verde, HIGH);
-          inicio();
-          tiempo = pulseIn(Echo, HIGH);
-          distancia = tiempo * 0.000001 * Vel_Son / 2.0;
-          Serial.print(distancia);
-          Serial.print(" cm\n");
-          delay(500);
-        }while(distancia <= 10);
-
-      coches--;  
-      String str = ("El coche ha salido");
-      Serial.println(str);
-        
-      servomotor.write(0);
-      digitalWrite(LED_rojo, HIGH);
-      digitalWrite(LED_verde, LOW);
-      delay(500);}
+      //Serial.print("Aforo completo, por favor dé la vuelta\n");
       }
       
-      if(distancia > 10){
+      else if(coches<=aforo){
+
+       int numero;
+       String cadena = Serial.readStringUntil('\n'); // Lee mensaje
+       //Serial.print(cadena);
+  
+       String valor = Serial.readStringUntil('\n');  // Lee valor
+       numero = valor.toInt();  // Transforma valor a entero  
+
+       if(cadena.equals("Bienvenido")){
+         Serial.println("Proceder_al_registro ");
+         Serial.println(1);
+       }
+
+       else if (cadena.equals("Registro_completado_e")){
+         do{
+          Serial.println("Coche_en_barrera ");
+          Serial.println(distancia);
+          servomotor.write(90);
+          digitalWrite(LED_rojo, LOW);
+          digitalWrite(LED_verde, HIGH);
+          inicio();
+          tiempo = pulseIn(Echo, HIGH);
+          distancia = tiempo * 0.000001 * Vel_Son / 2.0;
+          delay(500);
+         }while(distancia <= 10);
+
+        Serial.println("El_coche_ha_entrado ");
+        Serial.println(10);
+
+        coches++;
+      
         servomotor.write(0);
         digitalWrite(LED_rojo, HIGH);
         digitalWrite(LED_verde, LOW);
         delay(500);
+       }
+        
       }
-   }
+    }
+  }
+  
+  if (Bs==HIGH){
+    delay(100);
+    
+    if(Bs==HIGH){
+      
+      if(coches > 0) {
+        
+        int numero;
+        String cadena = Serial.readStringUntil('\n'); // Lee mensaje
+        //Serial.print(cadena);
+  
+        String valor = Serial.readStringUntil('\n');  // Lee valor
+        numero = valor.toInt();  // Transforma valor a entero  
+
+        if(cadena.equals("Bienvenido")){
+         Serial.println("Proceder_al_registro ");
+         Serial.println(2);
+        }
+
+        else if (cadena.equals("Registro_completado_s")){
+         do{
+          Serial.println("Coche_en_barrera ");
+          Serial.println(distancia);
+          servomotor.write(90);
+          digitalWrite(LED_rojo, LOW);
+          digitalWrite(LED_verde, HIGH);
+          inicio();
+          tiempo = pulseIn(Echo, HIGH);
+          distancia = tiempo * 0.000001 * Vel_Son / 2.0;
+          delay(500);
+         }while(distancia <= 10);
+
+         Serial.println("El_coche_ha_salido ");
+         Serial.println(11);
+         coches--;
+        
+         servomotor.write(0);
+         digitalWrite(LED_rojo, HIGH);
+         digitalWrite(LED_verde, LOW);
+         delay(500);
+       }
+      }      
+    }
+  }
 }
 
-void inicio(){
+void inicio(void){
 
   digitalWrite(Trig, LOW);
   delayMicroseconds(2);
@@ -141,16 +149,46 @@ void inicio(){
   digitalWrite(Trig, LOW);
 }
 
-char procesar_mensaje(){
+int procesar_aforo(void){
+  int numero;
   String cadena = Serial.readStringUntil('\n'); // Lee mensaje
+  //Serial.print(cadena);
   
-  if (cadena.equals("Registro completado")){ // Entre las comillas se pone el texto del mensaje que se espera  
+  String valor = Serial.readStringUntil('\n');  // Lee valor
+  numero = valor.toInt();  // Transforma valor a entero
 
-      return 'e';
-        // Acciones asociadas a ese mensaje
+  if (cadena.equals("GET_AFORO_MAX")) // Entre las comillas se pone el texto del mensaje que se espera  
+    {
+
+      Serial.println("Aforo_fijado ");
+      Serial.println(numero);
+      return numero;
     }
-  else if (cadena.equals("Pago realizado")){ // Y así sucesivamente con todos los posibles mensajes
-      
-      return 's';
+}
+
+void procesar_mensaje(void)
+{
+  int numero;
+  String cadena = Serial.readStringUntil('\n'); // Lee mensaje
+  //Serial.print(cadena);
+  
+  String valor = Serial.readStringUntil('\n');  // Lee valor
+  numero = valor.toInt();  // Transforma valor a entero
+
+  if (cadena.equals("GET_AFORO_MAX")) // Entre las comillas se pone el texto del mensaje que se espera  
+    {
+
+      Serial.println("Aforo_fijado ");
+      Serial.println(numero);
+        // Acciones asociadas a ese mensaje
+    // Si se desea responer a este mensaje 
+    // Serial.println("Respuesta_acabada_en_un_espacio_en_blanco ");
+    // Serial.println(valor_entero);
+    }
+
+  else if (cadena.equals("No_coches")) // Entre las comillas se pone el texto del mensaje que se espera  
+    {
+      Serial.println("No_hay_coches_dentro ");
+      Serial.println(coches);
     }
 }
