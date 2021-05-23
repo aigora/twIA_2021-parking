@@ -1,72 +1,151 @@
-#include <windows.h>
+#define TARIFA 0.06
+#define DIM 8
+#define MAX_BUFFER 200
+#define MAX_INTENTOS_READ 4
+#define MS_ENTRE_INTENTOS 250
+#define SI 1
+#define NO 0
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "SerialClass/SerialClass.h" // Biblioteca para acceder al puerto serie
-#include<string.h>
-#define aforo 15
-#define TARIFA 5
-#define DIM 8
+#include <time.h>
+#include <locale.h>
+#include <windows.h>
+#include <string.h>
+#include <conio.h>
+#include "SerialClass/SerialClass.h"
+#include <Windows.h>
 
 typedef struct {
-
-	float hora_entrada, hora_salida;
+	int plaza;
+	float tiempo;
 	char matricula[DIM];
 }COCHE;
 
-void registro(char matricula[], float hora_entrada, int coches);
+void registro(char matricula[], int coches);
 void entrada(int coches, COCHE*);
 void salida(int coches, COCHE*);
-float tarifa(float hora_entrada, float hora_salida);
+float tarifa(COCHE*, int coches);
+
+// Funciones prototipo
+//int menu_principal(void);
+void configura(void);
+
+void Talk_with_Arduino(Serial* Arduino);
+void Send_to_hw(Serial*, char*);
+int Receive_from_hw(Serial* Arduino, char* BufferEntrada);
+int Send_and_Receive(Serial* Arduino, const char* msg_out, int valor_out, char* msg_in, int* valor_in);
+void monitorizar_aforo(Serial*);
 
 int main() {
 
-	COCHE plazas[aforo];
+	Serial* Arduino;
+	char puerto[] = "COM3"; //Puerto serie al que está conectado Arduino
+	char BufferEntrada[MAX_BUFFER];
+	int bytesReceive, numero_recibido;
 
+	// Tareas de configuración y carga
+	configura();
+	Arduino = new Serial((char*)puerto);  // Establece la conexión con Arduino
 
-	int  coches = 0, i, bytesRecibidos;
-	float precio, importe_introducido;
-	char opc, BufferEntrada[100], BufferSalida[100];
+	printf("Introduce el numero de plazas de tu parking: ");
+	int n;
+	scanf_s("%d", &n);
 
-	Arduino = new Serial((char*)puerto); // Crea conexión lógica con Arduino
+	bytesReceive = Send_and_Receive(Arduino, "GET_AFORO_MAX", n, BufferEntrada, &numero_recibido);
+	if (bytesReceive == 0)
+		printf("No se ha recibido respuesta al mensaje enviado\n");
+	else
+		printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+
+	COCHE* plazas;
+	plazas = (COCHE*)calloc(n, sizeof(COCHE));
+
+	int  coches = 0;
+	float precio = 0, importe_introducido = 0;
 
 	do {
 
-		while (Arduino->IsConnected())
-		{
-			printf("Arduino conectado\n");
-			Sleep(1000);
+		printf("\t\t\tBIENVENIDO, PRESIONE EL BOTON PARA CONTINUAR\n");
+
+		do {
+			bytesReceive = Send_and_Receive(Arduino, "Bienvenido", 1, BufferEntrada, &numero_recibido);
+			if (bytesReceive == 0)
+				printf("No se ha recibido respuesta al mensaje enviado\n");
+			else
+				printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+		} while (numero_recibido != 1 && numero_recibido != 2);
+
+
+		switch (numero_recibido) {
+
+		case 1:
+
+			entrada(coches, plazas);
+
+			do {
+
+				bytesReceive = Send_and_Receive(Arduino, "Registro_completado_e", 1, BufferEntrada, &numero_recibido);
+				if (bytesReceive == 0)
+					printf("No se ha recibido respuesta al mensaje enviado\n");
+				else
+					printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+
+			} while (numero_recibido != 10);
+
+			Sleep(2000);
+
 			system("cls");
 
-			printf("\t\t\tBIENVENIDO, PRESIONE EL BOTON PARA CONTINUAR\n");
+			coches++;
+			break;
 
-			Sleep(2000); // Tiempo de espera para el resto de las tramas
-			bytesRecibidos = Arduino->ReadData(BufferEntrada, sizeof(char) * 99);
-			if (bytesRecibidos != -1) // Lectura de mensaje desde el puerto
-			{
-				BufferEntrada[bytesRecibidos - 1] = '\0';
-				printf("Recibidos %d bytes: %s\n", bytesRecibidos, BufferEntrada);
-				switch (BufferEntrada) {
 
-				case 'e':
-					entrada(coches, &plazas[coches]);
-					coches++;
-					break;
+		case 2:
 
-				case 's':
-					salida(coches, &plazas[coches]);
-					coches--;
-					break;
+			if (coches == 0) {
 
-				default:
-					printf("Opcion incorrecta\n\n");
-				}
+				bytesReceive = Send_and_Receive(Arduino, "No_coches", 0, BufferEntrada, &numero_recibido);
+				if (bytesReceive == 0)
+					printf("No se ha recibido respuesta al mensaje enviado\n");
+				else
+					printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+
+				Sleep(2000);
+				system("cls");
 			}
-			else
-				printf("No se ha recibido nada\n");
-			Sleep(1000);
+
+			if (coches > 0) {
+
+				salida(coches, plazas);
+
+				do {
+
+					bytesReceive = Send_and_Receive(Arduino, "Registro_completado_s", 1, BufferEntrada, &numero_recibido);
+					if (bytesReceive == 0)
+						printf("No se ha recibido respuesta al mensaje enviado\n");
+					else
+						printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+
+				} while (numero_recibido != 11);
+
+				Sleep(2000);
+
+				system("cls");
+				coches--;
+				break;
+			}
+			
+		default:
+			printf("Opcion incorrecta\n\n");
+			Sleep(2000);
+
+			system("cls");
+			coches--;
+			break;
 		}
 
-	} while (coches < aforo);
+	} while (coches < n);
 
 	system("cls");
 
@@ -79,40 +158,15 @@ void entrada(int coches, COCHE* plazas) {
 	getchar();
 	gets_s(plazas[coches].matricula);
 
-	printf("Introduzca la hora de entrada: ");
-	scanf_s("%f", &plazas[coches].hora_entrada);
+	plazas[coches].tiempo = clock();
 
-	registro(plazas[coches].matricula, plazas[coches].hora_entrada, coches);
+	registro(plazas[coches].matricula, coches);
 
 	printf("\n\nOk, puede entrar\n\n");
 
-	while (bytesRecibidos == -1)
-	{
-		strcpy_s(BufferSalida, "Registro completado");
-		//printf("Enviando %s\n", BufferSalida);
-		Arduino->WriteData(BufferSalida, strlen(BufferSalida)); // Envía mensaje
-		contador++;
-		if (contador == 1)
-			Sleep(2000); // Tiempos de espera para la primera trama (evita pérdidas)
-		else
-			Sleep(2000); // Tiempo de espera para el resto de las tramas
-		bytesRecibidos = Arduino->ReadData(BufferEntrada, sizeof(char) * 99);
-		if (bytesRecibidos != -1) // Lectura de mensaje desde el puerto
-		{
-			BufferEntrada[bytesRecibidos - 1] = '\0';
-			//printf("Recibidos %d bytes: %s\n", bytesRecibidos, BufferEntrada);
-		}
-		else
-			//printf("No se ha recibido nada\n");
-			Sleep(1000);
-	}
-
-	Sleep(2000);
-
-	system("cls");
 }
 
-void registro(char matricula_e[], float hora_entrada, int coches) { //HAY QUE REVISARLO
+void registro(char matricula_e[], int coches) {
 
 	FILE* pf;
 
@@ -124,7 +178,7 @@ void registro(char matricula_e[], float hora_entrada, int coches) { //HAY QUE RE
 
 		printf("El archivo registro.txt esta abierto\n");
 
-		fprintf_s(pf, "%s %.2f\n", matricula_e, hora_entrada);
+		fprintf_s(pf, "%s\n", matricula_e);
 	}
 
 	else
@@ -138,78 +192,161 @@ void registro(char matricula_e[], float hora_entrada, int coches) { //HAY QUE RE
 
 void salida(int coches, COCHE* plazas) {
 
-	int i = -1;
+	int i = 0;
 	float importe_introducido = 0, importe_introducido2 = 0, precio;
 	char matricula_sal[DIM];
 
 	printf("Introduzca su matricula: ");
-	getchar();
 	gets_s(matricula_sal);
 
-	do {  //comprobar si la matricula coincide con alguna del registro
+	do {  //comprobar si la matricula coincide con alguna del registro strcmp(matricula_sal, plazas[i].matricula) == 0
 
-		if (matricula_sal[DIM - 1] == plazas[i].matricula[DIM - 1]) {  //si coincide:
+		if (strcmp(matricula_sal, plazas[i].matricula) == 0) {  //si coincide:
 
-			printf("Introduzca la hora actual: ");
-			scanf_s("%f", &plazas[i].hora_salida);
-
-			precio = tarifa(plazas[i].hora_entrada, plazas[i].hora_salida);
+			precio = tarifa(plazas, coches);
 			printf("El importe asciende a %.2f EUROS, introduzcalos por favor: ", precio);
-			scanf_s("%f", &importe_introducido);
+			//getchar();
+			//scanf_s(" %f", &importe_introducido);
 
-			if (importe_introducido < precio) {
+			if ((importe_introducido + 0.009) < precio) {
 
-				printf("Le falta introducir %.2f EUROS, introduzcalos por favor: ", (precio - importe_introducido));
-				scanf_s("%f", &importe_introducido2);
+				printf("\nLe falta introducir %.2f EUROS, introduzcalos por favor: ", (precio - importe_introducido));
+				getchar();
+				scanf_s(" %f", &importe_introducido2);				
 				importe_introducido += importe_introducido2;
 			}
 
-			if (importe_introducido > precio) {
-				printf("Se le han devuelto %.2f EUROS, recojalos por favor ", (importe_introducido - precio));
+			if ((importe_introducido - 0.009) > precio) {
+				printf("\nSe le han devuelto %.2f EUROS, recojalos por favor ", (importe_introducido - precio));
 			}
 
 			printf("\nBuen viaje\n");
 
-			while (bytesRecibidos == -1)
-			{
-				strcpy_s(BufferSalida, "Pago realizado");
-				//printf("Enviando %s\n", BufferSalida);
-				Arduino->WriteData(BufferSalida, strlen(BufferSalida)); // Envía mensaje
-				contador++;
-				if (contador == 1)
-					Sleep(2000); // Tiempos de espera para la primera trama (evita pérdidas)
-				else
-					Sleep(2000); // Tiempo de espera para el resto de las tramas
-				bytesRecibidos = Arduino->ReadData(BufferEntrada, sizeof(char) * 99);
-				if (bytesRecibidos != -1) // Lectura de mensaje desde el puerto
-				{
-					BufferEntrada[bytesRecibidos - 1] = '\0';
-					//printf("Recibidos %d bytes: %s\n", bytesRecibidos, BufferEntrada);
-				}
-				else
-					//printf("No se ha recibido nada\n");
-					Sleep(1000);
-			}
-
-			coches--;
-
-			Sleep(2000);
-
-			system("cls");
 		}
 
 		i++;
 
-	} while (matricula_sal[DIM - 1] != plazas[i].matricula[DIM - 1] && i < coches);
+	} while ((strcmp(matricula_sal, plazas[i].matricula) == 0) && i < coches);
+
+
+	if (i > coches) {
+		printf("Matricula introducida no encontrada.\n");
+		Sleep(2000);
+
+		system("cls");
+	}
 
 }
 
-float tarifa(float hora_entrada, float hora_salida) {
+float tarifa(COCHE* plazas, int coches) {
 
 	float precio, tiempo;
 
-	tiempo = hora_salida - hora_entrada;
+	tiempo = (float)(clock() - plazas[coches].tiempo) / 60000;
+
 	precio = tiempo * TARIFA;
 
 	return precio;
+}
+
+void configura(void)
+{
+	// Establece juego de caracteres castellano
+	// Para que funcione hay que partir de un proyecto vacío
+	// No utilice la plantilla Aplicación de consola C++
+	setlocale(LC_ALL, "spanish");
+}
+
+// Ejemplo de función de intercambio de datos con Arduino
+void Talk_with_Arduino(Serial* Arduino)
+{
+	//char BufferSalida[MAX_BUFFER];
+	char BufferEntrada[MAX_BUFFER];
+	int bytesReceive,numero_recibido;
+	
+	if (Arduino->IsConnected()) // Si hay conexión con Arduino 
+	{
+
+		// Para enviar un mensaje y obtener una respuesta se utiliza la función Send_and_Receive
+		// El mensaje está formado por un texto y un entero
+		// El mensaje que se recibe está formado también por un texto y un entero.
+		// Parámetros de la función:
+		// El primero es la referencia a Arduino
+		// El segundo es el mensaje que se desea enviar
+		// El tercero es un entero que complementa al mensaje que se desea enviar
+		// El cuarto es el vector de char donde se recibe la respuesta
+		// El quinto es la referencia donde se recibe el entero de la respuesta
+		// IMPORTANTE: El mensaje de respuesta que emite Arduino  debe incluir un espacio en blanco separando respuesta de valor
+		// La función devuelve un entero con los bytes recibidos. Si es cero no se ha recibido nada.
+
+		bytesReceive = Send_and_Receive(Arduino, "GET_AFORO_MAX", -1, BufferEntrada, &numero_recibido);
+		if (bytesReceive == 0)
+			printf("No se ha recibido respuesta al mensaje enviado\n");
+		else
+			printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+	}
+	else
+		printf("La comunicación con la plataforma hardware no es posible en este momento\n"); // Req 3
+}
+
+// Protocolo de intercambio mensajes entre Pc y platforma hardware
+// Envío Mensaje valor
+// Recibe Mensaje valor
+		// IMPORTANTE: El mensaje de respuesta que emite Arduino  debe incluir un espacio en blanco separando respuesta de valor
+// Retorna bytes de la respuesta (0 si no hay respuesta)
+int Send_and_Receive(Serial* Arduino, const char* msg_out, int valor_out, char* msg_in, int* valor_in)
+{
+	char BufferSalida[MAX_BUFFER];
+	char BufferEntrada[MAX_BUFFER];
+	char* ptr;
+	int bytesReceive;
+
+	sprintf_s(BufferSalida, "%s\n%d\n", msg_out, valor_out);
+	Send_to_hw(Arduino, BufferSalida);
+	bytesReceive = Receive_from_hw(Arduino, BufferEntrada);
+	if (bytesReceive != 0)
+	{
+		ptr = strpbrk(BufferEntrada, " ");
+		if (ptr == NULL)
+			*valor_in = -1;
+		else
+		{
+			*valor_in = atoi(ptr);
+			*ptr = '\0';
+		}
+		strcpy_s(msg_in, MAX_BUFFER, BufferEntrada);
+	}
+	return bytesReceive;
+}
+
+
+// Envía un mensaje a la plataforma hardware
+void Send_to_hw(Serial* Arduino, char* BufferSalida)
+{
+	Arduino->WriteData(BufferSalida, strlen(BufferSalida));
+}
+
+//Recibe (si existe) un mensaje de la plataforma hardware
+//Realiza MAX_INTENTOS_READ para evitar mensajes recortados
+int Receive_from_hw(Serial* Arduino, char* BufferEntrada)
+{
+	int bytesRecibidos, bytesTotales = 0;
+	int intentos_lectura = 0;
+	char cadena[MAX_BUFFER];
+
+	BufferEntrada[0] = '\0';
+	while (intentos_lectura < MAX_INTENTOS_READ)
+	{
+		cadena[0] = '\0';
+		bytesRecibidos = Arduino->ReadData(cadena, sizeof(char) * (MAX_BUFFER - 1));
+		if (bytesRecibidos != -1)
+		{
+			cadena[bytesRecibidos] = '\0';
+			strcat_s(BufferEntrada, MAX_BUFFER, cadena);
+			bytesTotales += bytesRecibidos;
+		}
+		intentos_lectura++;
+		Sleep(MS_ENTRE_INTENTOS);
+	}
+	return bytesTotales;
 }
