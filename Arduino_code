@@ -9,7 +9,7 @@
 
 Servo servomotor;
 float distancia, tiempo;
-int Be, Bs, coches = 0, aforo;
+int Be, Bs, coches = 1, aforo;
 
 void setup() {
   
@@ -90,7 +90,7 @@ void loop() {
         Serial.println("El_coche_ha_entrado ");
         Serial.println(10);
 
-        coches++;
+        //coches++;
       
         servomotor.write(0);
         digitalWrite(LED_rojo, HIGH);
@@ -144,7 +144,8 @@ void loop() {
 
          Serial.println("El_coche_ha_salido ");
          Serial.println(11);
-         coches--;
+         
+         //coches--;
         
          servomotor.write(0);
          digitalWrite(LED_rojo, HIGH);
@@ -179,32 +180,5 @@ int procesar_aforo(void){
       Serial.println("Aforo_fijado ");
       Serial.println(numero);
       return numero;
-    }
-}
-
-void procesar_mensaje(void)
-{
-  int numero;
-  String cadena = Serial.readStringUntil('\n'); // Lee mensaje
-  //Serial.print(cadena);
-  
-  String valor = Serial.readStringUntil('\n');  // Lee valor
-  numero = valor.toInt();  // Transforma valor a entero
-
-  if (cadena.equals("GET_AFORO_MAX")) // Entre las comillas se pone el texto del mensaje que se espera  
-    {
-
-      Serial.println("Aforo_fijado ");
-      Serial.println(numero);
-        // Acciones asociadas a ese mensaje
-    // Si se desea responer a este mensaje 
-    // Serial.println("Respuesta_acabada_en_un_espacio_en_blanco ");
-    // Serial.println(valor_entero);
-    }
-
-  else if (cadena.equals("No_coches")) // Entre las comillas se pone el texto del mensaje que se espera  
-    {
-      Serial.println("No_hay_coches_dentro ");
-      Serial.println(coches);
     }
 }
