@@ -2,7 +2,7 @@
 #define DIM 8
 #define MAX_BUFFER 200
 #define MAX_INTENTOS_READ 4
-#define MS_ENTRE_INTENTOS 250
+#define MS_ENTRE_INTENTOS 200
 #define SI 1
 #define NO 0
 
@@ -24,8 +24,8 @@ typedef struct {
 
 void registro(char matricula[], int coches);
 void entrada(int coches, COCHE*);
-void salida(int coches, COCHE*);
-float tarifa(COCHE*, int coches);
+int salida(int coches, COCHE*);
+void tarifa(COCHE*, int coches);
 
 // Funciones prototipo
 //int menu_principal(void);
@@ -61,19 +61,19 @@ int main() {
 	COCHE* plazas;
 	plazas = (COCHE*)calloc(n, sizeof(COCHE));
 
-	int  coches = 0;
+	int  coches = 0, mat, error = 0;
 	float precio = 0, importe_introducido = 0;
+	char opc;
 
 	do {
 
 		printf("\t\t\tBIENVENIDO, PRESIONE EL BOTON PARA CONTINUAR\n");
 
 		do {
-			bytesReceive = Send_and_Receive(Arduino, "Bienvenido", 1, BufferEntrada, &numero_recibido);
-			if (bytesReceive == 0)
-				printf("No se ha recibido respuesta al mensaje enviado\n");
-			else
+			bytesReceive = Send_and_Receive(Arduino, "Bienvenido", coches, BufferEntrada, &numero_recibido);
+			if (bytesReceive != 0)
 				printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+
 		} while (numero_recibido != 1 && numero_recibido != 2);
 
 
@@ -81,23 +81,28 @@ int main() {
 
 		case 1:
 
-			entrada(coches, plazas);
+			if (coches == n) {
+				printf("\t\t\tAFORO COMPLETO, POR FAVOR DE LA VUELTA\n\n\n");
+				Sleep(2000);
+				system("cls");
+			}
+			else {
+				entrada(coches, plazas);
 
-			do {
+				do {
 
-				bytesReceive = Send_and_Receive(Arduino, "Registro_completado_e", 1, BufferEntrada, &numero_recibido);
-				if (bytesReceive == 0)
-					printf("No se ha recibido respuesta al mensaje enviado\n");
-				else
-					printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+					bytesReceive = Send_and_Receive(Arduino, "Registro_completado_e", 1, BufferEntrada, &numero_recibido);
+					if (bytesReceive != 0)
+						printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
 
-			} while (numero_recibido != 10);
+				} while (numero_recibido != 10);
 
-			Sleep(2000);
+				Sleep(2000);
 
-			system("cls");
+				system("cls");
 
-			coches++;
+				coches++;
+			}
 			break;
 
 
@@ -105,11 +110,8 @@ int main() {
 
 			if (coches == 0) {
 
-				bytesReceive = Send_and_Receive(Arduino, "No_coches", 0, BufferEntrada, &numero_recibido);
-				if (bytesReceive == 0)
-					printf("No se ha recibido respuesta al mensaje enviado\n");
-				else
-					printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+				printf("No hay coches dentro");
+				error++;
 
 				Sleep(2000);
 				system("cls");
@@ -117,39 +119,42 @@ int main() {
 
 			if (coches > 0) {
 
-				salida(coches, plazas);
+				mat = salida(coches, plazas);
 
-				do {
+				if (mat == 1) {
+					do {
 
-					bytesReceive = Send_and_Receive(Arduino, "Registro_completado_s", 1, BufferEntrada, &numero_recibido);
-					if (bytesReceive == 0)
-						printf("No se ha recibido respuesta al mensaje enviado\n");
-					else
-						printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
+						bytesReceive = Send_and_Receive(Arduino, "Registro_completado_s", 1, BufferEntrada, &numero_recibido);
+						if (bytesReceive != 0)
+							printf("Mensaje recibido %s %d\n", BufferEntrada, numero_recibido);
 
-				} while (numero_recibido != 11);
+					} while (numero_recibido != 11);
+					coches--;
+				}
+
+				else
+					error++;
 
 				Sleep(2000);
 
 				system("cls");
-				coches--;
-				break;
 			}
+
+			break;
 			
 		default:
-			printf("Opcion incorrecta\n\n");
-			Sleep(2000);
-
-			system("cls");
-			coches--;
 			break;
 		}
 
-	} while (coches < n);
+		printf("Presione c para continuar: ");
+		scanf_s(" %c", &opc);
 
-	system("cls");
+	} while ((opc == 'c' || opc == 'C') && error == 0);
 
-	printf("\t\t\tAFORO COMPLETO, POR FAVOR DE LA VUELTA\n\n\n");
+	if (error > 0)
+		printf("\nSe ha producido un error");
+
+	printf("\nHa salido del programa\n\n");
 }
 
 void entrada(int coches, COCHE* plazas) {
@@ -190,63 +195,55 @@ void registro(char matricula_e[], int coches) {
 		printf("\n Error en el cierre del archivo");
 }
 
-void salida(int coches, COCHE* plazas) {
+int salida(int coches, COCHE* plazas) {
 
-	int i = 0;
-	float importe_introducido = 0, importe_introducido2 = 0, precio;
+	int i = 0, mat;
 	char matricula_sal[DIM];
 
 	printf("Introduzca su matricula: ");
+	getchar();
 	gets_s(matricula_sal);
 
 	do {  //comprobar si la matricula coincide con alguna del registro strcmp(matricula_sal, plazas[i].matricula) == 0
 
 		if (strcmp(matricula_sal, plazas[i].matricula) == 0) {  //si coincide:
 
-			precio = tarifa(plazas, coches);
-			printf("El importe asciende a %.2f EUROS, introduzcalos por favor: ", precio);
-			//getchar();
-			//scanf_s(" %f", &importe_introducido);
-
-			if ((importe_introducido + 0.009) < precio) {
-
-				printf("\nLe falta introducir %.2f EUROS, introduzcalos por favor: ", (precio - importe_introducido));
-				getchar();
-				scanf_s(" %f", &importe_introducido2);				
-				importe_introducido += importe_introducido2;
-			}
-
-			if ((importe_introducido - 0.009) > precio) {
-				printf("\nSe le han devuelto %.2f EUROS, recojalos por favor ", (importe_introducido - precio));
-			}
-
+			tarifa(plazas, i);
 			printf("\nBuen viaje\n");
-
 		}
 
-		i++;
+		else
+			i++;
 
-	} while ((strcmp(matricula_sal, plazas[i].matricula) == 0) && i < coches);
+	} while ((strcmp(matricula_sal, plazas[i].matricula) != 0) && i < coches);
 
+	mat = 1;
 
-	if (i > coches) {
+	if (i = coches && (strcmp(matricula_sal, plazas[i].matricula) != 0)) {
 		printf("Matricula introducida no encontrada.\n");
-		Sleep(2000);
-
-		system("cls");
+		mat = 0;
 	}
-
+	return mat;
 }
 
-float tarifa(COCHE* plazas, int coches) {
+void tarifa(COCHE* plazas, int i) {
 
-	float precio, tiempo;
+	float precio, tiempo, imp_i = 0.00;
 
-	tiempo = (float)(clock() - plazas[coches].tiempo) / 60000;
+	tiempo = (float)(clock() - plazas[i].tiempo) / 60000;
 
 	precio = tiempo * TARIFA;
 
-	return precio;
+	do {
+
+		printf("\nLe falta introducir %.2f EUROS, introduzcalos por favor: ", (precio - imp_i));
+		scanf_s("%f", &imp_i);
+
+	} while (precio > (imp_i + 0.009));
+
+	if ((precio + 0.009) < imp_i)
+		printf("\nSe le han devuelto %.2f EUROS, recojalos por favor\n", (imp_i - precio));
+
 }
 
 void configura(void)
